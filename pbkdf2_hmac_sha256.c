@@ -34,10 +34,15 @@ static const uint32_t K[64] =
 
 static void processblock(SHA256_CTX *s, const uint8_t *buf)
 {
-	uint32_t W[64], t1, t2, a, b, c, d, e, f, g, h;
+#ifdef SHA256_PLACEBO
+	uint32_t *W = s->W;
+#else
+	uint32_t W[64];
+#endif
+	uint32_t t1, t2, a, b, c, d, e, f, g, h;
 	uint32_t i;
 	
-	for (i = 0; i < 16; i++)
+	for (i = 0; i < 16; i++) // Note: W might contain sensitive data...
 	{
 		W[i] = (uint32_t)buf[4 * i    ] << 24;
 		W[i] |= (uint32_t)buf[4 * i + 1] << 16;
@@ -159,37 +164,49 @@ void sha256_update(SHA256_CTX *s, const uint8_t *m, uint32_t len)
 	memcpy(s->buf, p, len);
 }
 
-#define INNER_PADDING '\x36'
-#define OUTER_PADDING '\x5c'
+#define INNER_PAD '\x36'
+#define OUTER_PAD '\x5c'
 
-void hmac_sha256_init(HMAC_SHA256_CTX *hmac, uint8_t *key, uint32_t keylen)
+void hmac_sha256_init(HMAC_SHA256_CTX *hmac, const uint8_t *key, uint32_t keylen)
 {
 	if (keylen <= SHA256_BLOCKLEN)
 	{
-		memcpy(hmac->outer_key, key, keylen);
-		memset(hmac->outer_key + keylen, '\0', SHA256_BLOCKLEN - keylen);
+		memcpy(hmac->sha.buf, key, keylen);
+		memset(hmac->sha.buf + keylen, '\0', SHA256_BLOCKLEN - keylen);
 	}
 	else
 	{
 		sha256_init(&hmac->sha);
 		sha256_update(&hmac->sha, key, keylen);
-		sha256_final(&hmac->sha, hmac->outer_key);
-		memset(hmac->outer_key + SHA256_DIGESTLEN, '\0', SHA256_BLOCKLEN - SHA256_DIGESTLEN);
+		sha256_final(&hmac->sha, hmac->sha.buf);
+		memset(hmac->sha.buf + SHA256_DIGESTLEN, '\0', SHA256_BLOCKLEN - SHA256_DIGESTLEN);
 	}
-	
+
+	// This relies on the fact that:
+	// 1. sha256_init keeps sha.buf untouched
+	// 2. sha256_update keeps sha.buf untouched if message length is SHA256_BLOCKLEN
 	uint32_t i;
 	for (i = 0; i < SHA256_BLOCKLEN; i++)
 	{
-		hmac->inner_key[ i ] = hmac->outer_key[ i ] ^ INNER_PADDING;
-		hmac->outer_key[ i ] = hmac->outer_key[ i ] ^ OUTER_PADDING;
+		hmac->sha.buf[ i ] = hmac->sha.buf[ i ] ^ OUTER_PAD;
 	}
 	
 	sha256_init(&hmac->sha);
-	sha256_update(&hmac->sha, hmac->inner_key, SHA256_BLOCKLEN);
-	memcpy(&hmac->sha_init, &hmac->sha, sizeof hmac->sha_init);
+	sha256_update(&hmac->sha, hmac->sha.buf, SHA256_BLOCKLEN);
+	memcpy(hmac->h_outer, hmac->sha.h, SHA256_BLOCKLEN);
+	
+	//uint32_t i;
+	for (i = 0; i < SHA256_BLOCKLEN; i++)
+	{
+		hmac->sha.buf[ i ] = (hmac->sha.buf[ i ] ^ OUTER_PAD) ^ INNER_PAD;
+	}
+	
+	sha256_init(&hmac->sha);
+	sha256_update(&hmac->sha, hmac->sha.buf, SHA256_BLOCKLEN);
+	memcpy(hmac->h_inner, hmac->sha.h, SHA256_BLOCKLEN);
 }
 
-void hmac_sha256_update(HMAC_SHA256_CTX *hmac, uint8_t *m, uint32_t mlen)
+void hmac_sha256_update(HMAC_SHA256_CTX *hmac, const uint8_t *m, uint32_t mlen)
 {
 	sha256_update(&hmac->sha, m, mlen);
 }
@@ -198,15 +215,17 @@ void hmac_sha256_final(HMAC_SHA256_CTX *hmac, uint8_t *md)
 {
 	sha256_final(&hmac->sha, md);
 	
-	//sha256_init( &hmac->sha );
-	sha256_update(&hmac->sha, hmac->outer_key, sizeof hmac->outer_key);
+	hmac->sha.len = SHA256_BLOCKLEN;
+	memcpy(hmac->sha.h, hmac->h_outer, SHA256_BLOCKLEN);
+
 	sha256_update(&hmac->sha, md, SHA256_DIGESTLEN);
 	sha256_final(&hmac->sha, md);
-	//sha256_update( &hmac->sha, hmac->inner_key, SHA256_BLOCKLEN ); // reset
-	memcpy(&hmac->sha, &hmac->sha_init, sizeof hmac->sha);
+
+	hmac->sha.len = SHA256_BLOCKLEN;
+	memcpy(hmac->sha.h, hmac->h_inner, SHA256_BLOCKLEN);
 }
 
-void pbkdf2_sha256(uint8_t *key, uint32_t keylen, uint8_t *salt, uint32_t saltlen,
+void pbkdf2_sha256(const uint8_t *key, uint32_t keylen, const uint8_t *salt, uint32_t saltlen,
 	uint32_t rounds, uint8_t *dk, uint32_t dklen)
 {
 	uint8_t *T = dk;
