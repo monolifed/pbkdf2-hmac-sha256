@@ -216,13 +216,14 @@ void hmac_sha256_final(HMAC_SHA256_CTX *hmac, uint8_t *md)
 	sha256_final(&hmac->sha, md);
 	
 	hmac->sha.len = SHA256_BLOCKLEN;
-	memcpy(hmac->sha.h, hmac->h_outer, SHA256_BLOCKLEN);
+	memcpy(hmac->sha.h, hmac->h_outer, SHA256_DIGESTLEN);
 	
 	sha256_update(&hmac->sha, md, SHA256_DIGESTLEN);
 	sha256_final(&hmac->sha, md);
 	
+	// reset sha back to initial state
 	hmac->sha.len = SHA256_BLOCKLEN;
-	memcpy(hmac->sha.h, hmac->h_inner, SHA256_BLOCKLEN);
+	memcpy(hmac->sha.h, hmac->h_inner, SHA256_DIGESTLEN);
 }
 
 void pbkdf2_sha256(const uint8_t *key, uint32_t keylen, const uint8_t *salt, uint32_t saltlen,
