@@ -3,7 +3,7 @@
 
 #define PBKDF2_SHA256_STATIC
 #define PBKDF2_SHA256_IMPLEMENTATION
-#include "pbkdf2_hmac_sha256.h"
+#include "pbkdf2_sha256.h"
 
 #if defined(HAS_OSSL)
 #include <openssl/evp.h>
