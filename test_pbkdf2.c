@@ -20,8 +20,8 @@ void print_as_hex(const uint8_t *s,  const uint32_t slen)
 	printf("\n");
 }
 
-void check_with_ossl(const uint8_t *this_one, const uint8_t *ossl_one, uint32_t len, 
-	const char *what)
+void check_with_ossl(const uint8_t *this_one, const uint8_t *ossl_one, uint32_t len,
+    const char *what)
 {
 	if (memcmp(this_one, ossl_one, len) == 0)
 	{
@@ -42,7 +42,7 @@ void compute_sha(const uint8_t *msg, uint32_t mlen)
 	sha256_update(&sha, msg, mlen);
 	sha256_final(&sha, md);
 	print_as_hex(md, sizeof md);
-
+	
 #if defined(HAS_OSSL)
 	uint8_t md_ossl[SHA256_DIGESTLEN];
 	EVP_MD_CTX *sha_ossl = EVP_MD_CTX_new();
@@ -51,7 +51,7 @@ void compute_sha(const uint8_t *msg, uint32_t mlen)
 	EVP_DigestFinal_ex(sha_ossl, md_ossl, 0);
 	
 	EVP_MD_CTX_free(sha_ossl);
-
+	
 	check_with_ossl(md, md_ossl, sizeof md, "sha256");
 #endif
 }
@@ -64,7 +64,7 @@ void compute_hmac(const uint8_t *key, uint32_t klen, const uint8_t *msg, uint32_
 	hmac_sha256_update(&hmac, msg, mlen);
 	hmac_sha256_final(&hmac, md);
 	print_as_hex(md, sizeof md);
-
+	
 #if defined(HAS_OSSL)
 	uint8_t md_ossl[SHA256_DIGESTLEN];
 	HMAC_CTX *hmac_ossl = HMAC_CTX_new();
@@ -73,14 +73,14 @@ void compute_hmac(const uint8_t *key, uint32_t klen, const uint8_t *msg, uint32_
 	HMAC_Final(hmac_ossl, md_ossl, 0);
 	
 	HMAC_CTX_free(hmac_ossl);
-
+	
 	check_with_ossl(md, md_ossl, sizeof md, "hmac-sha256");
-
+	
 #endif
 }
 
 void compute_pbkdf2(const uint8_t *key, uint32_t klen, const uint8_t *salt, uint32_t slen,
-	uint32_t rounds, uint32_t dklen)
+    uint32_t rounds, uint32_t dklen)
 {
 	uint8_t dk[dklen];
 	HMAC_SHA256_CTX pbkdf_hmac;
@@ -90,7 +90,7 @@ void compute_pbkdf2(const uint8_t *key, uint32_t klen, const uint8_t *salt, uint
 #if defined(HAS_OSSL)
 	uint8_t dk_ossl[dklen];
 	PKCS5_PBKDF2_HMAC((const char *) key, klen, salt, slen, rounds, EVP_sha256(), dklen, dk_ossl);
-
+	
 	check_with_ossl(dk, dk_ossl, sizeof dk, "pbkdf2-sha256");
 #endif
 }
@@ -115,7 +115,7 @@ int main(int argc, char **argv)
 	
 	printf("PBKDF2 of key:arg[1], salt:arg[2], rounds:%i, dklen:%i \n", ROUNDS, DKLEN);
 	compute_pbkdf2((uint8_t *) argv[1], strlen(argv[1]), (uint8_t *) argv[2], strlen(argv[2]),
-		ROUNDS, DKLEN);
+	    ROUNDS, DKLEN);
 	printf("\n");
 	
 	return 0;
