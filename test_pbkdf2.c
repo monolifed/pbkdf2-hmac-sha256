@@ -68,7 +68,7 @@ void compute_hmac(const uint8_t *key, uint32_t klen, const uint8_t *msg, uint32_
 #if defined(HAS_OSSL)
 	uint8_t md_ossl[SHA256_DIGESTLEN];
 	HMAC_CTX *hmac_ossl = HMAC_CTX_new();
-	HMAC_Init_ex(hmac_ossl, key, klen, EVP_sha256(), 0);
+	HMAC_Init_ex(hmac_ossl, key, (int) klen, EVP_sha256(), 0);
 	HMAC_Update(hmac_ossl, msg, mlen);
 	HMAC_Final(hmac_ossl, md_ossl, 0);
 	
@@ -89,7 +89,8 @@ void compute_pbkdf2(const uint8_t *key, uint32_t klen, const uint8_t *salt, uint
 	
 #if defined(HAS_OSSL)
 	uint8_t dk_ossl[dklen];
-	PKCS5_PBKDF2_HMAC((const char *) key, klen, salt, slen, rounds, EVP_sha256(), dklen, dk_ossl);
+	PKCS5_PBKDF2_HMAC((const char *) key, (int) klen, salt, (int) slen, (int) rounds,
+	                  EVP_sha256(), (int) dklen, dk_ossl);
 	
 	check_with_ossl(dk, dk_ossl, sizeof dk, "pbkdf2-sha256");
 #endif

@@ -1,10 +1,22 @@
-all: test_pbkdf2
+CFLAGS := -O2 -Wall -Wextra -Wsign-conversion -pedantic -std=c99
+APPNAME := test_pbkdf2
 
-test_pbkdf2: test_pbkdf2.c pbkdf2_sha256.h
-	gcc -O2 -Wall -Wextra -pedantic -std=c99 -o test_pbkdf2 test_pbkdf2.c
+ifeq ($(OS),Windows_NT)
+	RM := del /Q
+	CC := gcc
+	EXT := .exe
+endif
 
-test_pbkdf2_ossl: test_pbkdf2.c pbkdf2_sha256.h
-	gcc -O2 -Wall -Wextra -pedantic -std=c99 -DHAS_OSSL -o test_pbkdf2_ossl test_pbkdf2.c -lcrypto
+APP := $(APPNAME)$(EXT)
+APP_OSSL := $(APPNAME)_ossl$(EXT)
+
+all: $(APP)
+
+$(APP): test_pbkdf2.c pbkdf2_sha256.h
+	$(CC) $(CFLAGS) -o $@ $<
+
+$(APP_OSSL): test_pbkdf2.c pbkdf2_sha256.h
+	$(CC) $(CFLAGS) -DHAS_OSSL -o $@ $< -lcrypto
 
 clean:
-	rm -f test_pbkdf2 test_pbkdf2_ossl
+	$(RM) $(APP) $(APP_OSSL)
