@@ -85,7 +85,8 @@ static void sha256_transform(SHA256_CTX *s, const uint8_t *buf)
 	
 	for (i = 0, j = 0; i < 16; i++, j += 4)
 	{
-		m[i] = (buf[j] << 24) | (buf[j + 1] << 16) | (buf[j + 2] << 8) | (buf[j + 3]);
+		m[i] = (uint32_t) buf[j] << 24 | (uint32_t) buf[j + 1] << 16 |
+		       (uint32_t) buf[j + 2] << 8 | (uint32_t) buf[j + 3];
 	}
 	for (; i < 64; i++)
 	{
