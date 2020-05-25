@@ -89,11 +89,12 @@ void compute_pbkdf2(const uint8_t *key, uint32_t klen, const uint8_t *salt, uint
 	print_as_hex(dk, dklen);
 	
 #if defined(HAS_OSSL)
-	uint8_t dk_ossl[dklen];
+	uint8_t *dk_ossl = malloc(dklen);
 	PKCS5_PBKDF2_HMAC((const char *) key, (int) klen, salt, (int) slen, (int) rounds,
 	                  EVP_sha256(), (int) dklen, dk_ossl);
 	
 	check_with_ossl(dk, dk_ossl, dklen, "pbkdf2-sha256");
+	free(dk_ossl);
 #endif
 	free(dk);
 }
