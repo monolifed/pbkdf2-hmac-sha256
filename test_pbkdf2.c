@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 #define PBKDF2_SHA256_STATIC
 #define PBKDF2_SHA256_IMPLEMENTATION
@@ -82,7 +83,7 @@ void compute_hmac(const uint8_t *key, uint32_t klen, const uint8_t *msg, uint32_
 void compute_pbkdf2(const uint8_t *key, uint32_t klen, const uint8_t *salt, uint32_t slen,
     uint32_t rounds, uint32_t dklen)
 {
-	uint8_t dk[dklen];
+	uint8_t* dk = (uint8_t*)malloc(sizeof(uint8_t)*dklen);
 	HMAC_SHA256_CTX pbkdf_hmac;
 	pbkdf2_sha256(&pbkdf_hmac, key, klen, salt, slen, rounds, dk, dklen);
 	print_as_hex(dk, dklen);
